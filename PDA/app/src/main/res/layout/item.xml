@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:cardview="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="10dp">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <Button
+            android:layout_width="160dp"
+            android:layout_height="110dp"
+            android:padding="10dp"
+            android:id="@+id/addPackage"
+            android:text="加包"
+            android:onClick="addPackageClick"/>
+
+        <Button
+            android:id="@+id/reducePackage"
+            android:layout_width="160dp"
+            android:layout_height="110dp"
+            android:padding="10dp"
+            android:text="减包"
+            android:onClick="reducePackageClick"/>
+    </LinearLayout>
+    <LinearLayout
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:layout_width="160dp"
+            android:layout_height="110dp"
+            android:padding="10dp"
+            android:id="@+id/smartCreatePackage"
+            android:text="智能建包"
+            android:onClick="smartCreatePackageClick"/>
+
+        <Button
+            android:id="@+id/packageQuery"
+            android:layout_width="160dp"
+            android:layout_height="110dp"
+            android:padding="10dp"
+            android:text="集包（面单）查询"
+            android:onClick="packageQueryClick"/>
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/exit"
+        android:layout_width="300dp"
+        android:layout_height="60dp"
+        android:layout_gravity="center"
+        android:padding="10dp"
+        android:text="注销"
+        android:onClick="exitClick"/>
+</LinearLayout>

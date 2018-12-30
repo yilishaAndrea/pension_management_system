@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <TextView
+        android:id="@+id/packageNumberTV"
+        android:layout_width="115dp"
+        android:layout_height="25dp"
+        />
+    <TextView
+        android:id="@+id/pickNumberTV"
+        android:layout_width="115dp"
+        android:layout_height="25dp" />
+    <TextView
+        android:id="@+id/sendTV"
+        android:layout_width="115dp"
+        android:layout_height="25dp"
+       />
+</LinearLayout>
