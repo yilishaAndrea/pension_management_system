@@ -1,0 +1,1231 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>MapPage.html</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta http-equiv="cache-control" content="no-cache">
+	<meta http-equiv="expires" content="0">    
+	<meta http-equiv="keywords" content="keyword1,keyword2,keyword3">
+	<meta http-equiv="description" content="This is my page">
+	<!-- 调用到指定文件的jquery easyui -->
+	<link rel="stylesheet" href="../themes/default/easyui.css" type="text/css"></link>
+	<link rel="stylesheet" href="../themes/icon.css" type="text/css"></link>
+	<link rel="stylesheet" href="../css/common.css" type="text/css"></link>
+  	<script type="text/javascript" src="../js/jquery-1.8.0.min.js"></script>
+    <script type="text/javascript" src="../js/jquery.easyui.min.js"></script>
+    <script type="text/javascript" src="../js/locale/easyui-lang-zh_CN.js"></script>
+    <!-- 加载地图的一些准备 -->
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+	<style type="text/css">
+		body, html,#allmap {width: 100%;height: 100%;overflow: hidden;margin:0;font-family:"微软雅黑";}
+		#l-map{height:100%;width:78%;float:left;border-right:2px solid #bcbcbc;}
+		#r-result{height:100%;width:20%;float:left;}
+	</style>
+	<!-- 调用百度地图2.0API接口 -->
+	<script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=0RGxsx0dlBCgy1szZuETAPDUDaIuTFP5"></script>
+	<!-- 调用百度接口提供的计算类库，用于后来的两点之间距离计算 -->
+	<script type="text/javascript" src="http://api.map.baidu.com/library/GeoUtils/1.2/src/GeoUtils_min.js"></script>
+	<link rel="stylesheet" type="text/css" href="http://webmap1.map.bdstatic.com/wolfman/static/common/pkg/index_dba36ac.css"/>
+	<link rel="stylesheet" type="text/css" href="http://webmap1.map.bdstatic.com/wolfman/static/common/widget/ui/prompt/prompt_5b31ddb.css"/>
+	<link rel="stylesheet" type="text/css" href="http://webmap0.map.bdstatic.com/wolfman/static/pano/widget/module/PoiSearchModule/PoiSearchModule_a6c078f.css"/>
+  </head>
+  <body> 
+  	<!-- 采用easyUI的layout 左边为一栏，右边一栏 -->
+  	<div>
+  		<div style="width:100%;height:100%;">
+			<div class="easyui-layout" style="width:100%;height:100%;">	
+				<!-- 左边部分 -->
+				<div data-options="region:'west',split:true" title="实时动态" style="width:220px;">
+					<div style="margin-bottom:10px;margin-left:10px;margin-top:10px;">
+						<div>总用户数:</div>
+						<div style="text-align:center">
+							<input id="all_the_user" class="easyui-textbox" style="width:80%;height:25px;border:0px" value="" readonly>
+						</div>
+					</div>
+					<div style="margin-left:10px;margin-bottom:10px">
+						<div>呼叫用户数:</div>
+						<div style="text-align:center">
+							<input id="need_help_user" style="width:80%;height:25px;border:0px" value="" readonly>
+						</div>
+					</div>
+					<div style="margin-left:10px;margin-bottom:10px">
+						<div>总服务人数:</div>
+						<div style="text-align:center">
+							<input id="all_the_server" class="easyui-textbox" style="width:80%;height:25px;border:0px" value="" readonly>
+						</div>
+					</div>
+					<div style="margin-left:10px;margin-bottom:10px">
+						<div>空闲服务人数:</div>
+						<div style="text-align:center">
+							<input id="leisure_server" class="easyui-textbox" style="width:80%;height:25px;border:0px" value="" readonly>
+						</div>
+					</div>
+					<!-- 查询服务人员行动轨迹 -->
+					<div style="margin-left:10px;margin-bottom:10px">
+						<div style="margin-bottom:10px">服务人员运动轨迹:</div>
+						<div style="text-align:center;margin-bottom:10px">
+							<!-- 选择要查询的服务人员的serverID 数据通过javascript加入 -->
+							<select id="select_serverID" class="easyui-combobox1" name="select_serverID" style="width:160px"></select>
+						</div>
+						<div style="text-align:center">
+							<!-- 点击后返回原来的页面(将"xxxx的运动轨迹"，改为"呼叫信息") -->
+							<a href="#" id="back_and_reload" class="easyui-linkbutton" data-options="iconCls:'icon-reload'" style="width:70px">Reload</a>
+							<!-- 点击后 (将"呼叫信息"，改为"xxxx的运动轨迹")-->
+							<a href="#" id="search_server_trace" class="easyui-linkbutton" data-options="iconCls:'icon-search'" style="width:70px">Search</a>
+						</div>
+					</div>
+				</div>
+				<!--  -->
+				<div data-options="region:'center'" class="easyui-tabs" style="width:700px;height:250px">
+					<!-- 开始展示地图上用户等其他信息，当Search被点击后绘制展示选中serverID的运动轨迹 -->
+					<div id="alter_title" title="养老系统地图模式" style="padding:0px">
+						<!-- 加载显示呼叫信息在地图上跳动显示 -->
+						<div id="allmap" style="width: 100%;height:100%" >
+							<div style="width: 10px;height:5px">
+								<button>test</button>
+							</div>
+						</div>
+					</div>
+				</div>		
+			</div>
+  		</div>
+  	</div>
+  </body>
+</html>
+<!-- 加载页面 -->
+<script type="text/javascript">
+	window.onload = loadMapPage;
+	function loadMapPage(){
+		//绘出公共设施点
+		showWorkspaceCoordinate();
+		//绘出用户点
+		showUserCoordinate();
+		//绘出服务人员点
+		showServerCoordinate();
+		//绑定数据到select
+		selectServerIDTOSelect();
+		//search_server_trace按钮被点击时,查询某个服务人员的运动轨迹
+		selectServerTrace();
+	}
+</script>
+<script type="text/javascript">
+
+	//将呼叫用户数目绑定到need_help_user
+	function showNeedHelpNumber(){
+		var needHelpNumber = document.getElementById('need_help_user');
+		needHelpNumber.setAttribute('value',needHelp);
+	}
+	//将总用户数目绑定到all_the_user
+	function showUserNumber(){
+		var allUserNumber = document.getElementById('all_the_user');
+		//alert(userID.length);
+		allUserNumber.setAttribute('value',userID.length);
+	}
+	//将空闲服务人员数目绑定到leisure_server
+	function showLeisureServerNumber(){
+		var LeisureNumber = document.getElementById('leisure_server');
+		LeisureNumber.setAttribute('value',leisureServer);
+	}
+	//将服务人员总数目绑定到all_the_server
+	function showAllServerNumber(){
+		var AllServerNumber = document.getElementById('all_the_server');
+		AllServerNumber.setAttribute('value',serverID.length);
+	}
+	//查询周围3KM内服务员或用户
+	function selectAround(CoordinateX,CoordinateY){
+		var point = new BMap.Point(CoordinateX, CoordinateY);
+		var circle = new BMap.Circle(point,3000,{strokeColor:"blue", strokeWeight:6, strokeOpacity:0.5}); //创建圆
+		map.addOverlay(circle);
+	}
+	
+	//绑定数据到select_serverID中
+	function selectServerIDTOSelect(){
+		for(var i=0;i<serverID.length;i++){
+			$("#select_serverID").append("<option>"+serverID[i]+"</option>");
+		}
+	}
+	//search_server_trace按钮被点击时,查询某个服务人员的运动轨迹
+	function selectServerTrace(){
+		//存放获取到的X,Y坐标
+		var serverTraceDataX = new Array();
+		var serverTraceDataY = new Array();
+		//利用获取到的坐标,生成BMap.Point类型的点数组数据
+		var serverTracePointData = new Array();
+		$('#search_server_trace').click(function(){
+			$.ajax({
+			type:'post',
+			url:'../ServerTraceServlet?method=getSelectServerTraceRecord',
+			data: {"select_serverID":$("#select_serverID option:selected").text()},
+			cache:false ,
+			dataType:'json',
+			success:function(result){
+				//重新绘制地图
+				var map = new BMap.Map("allmap");
+				var obj = eval(result);
+				//alert(obj.rows.length);
+				for(var i=0 ; i<obj.rows.length ; i++){
+					serverTraceDataX[i] = obj.rows[i].serverCoordinateX;
+					serverTraceDataY[i] = obj.rows[i].serverCoordinateY;
+					serverTracePointData[i] = new BMap.Point(serverTraceDataX[i],serverTraceDataY[i]);
+					
+					map.centerAndZoom(serverTracePointData[i], 12);
+					map.enableScrollWheelZoom();
+				}
+				//画线，也就是运行轨迹
+				var polyline = new BMap.Polyline(serverTracePointData, {strokeColor:"blue", strokeWeight:2, strokeOpacity:0.5});   //创建折线
+				map.addOverlay(polyline);   //增加折线
+				//超过二十分钟在差不多同一经纬度下，则画一个点
+				for(var i=0 ; i<obj.rows.length ;i++){
+					for(var j=i+1 ; j<obj.rows.length ;j++){
+						for(var k=j+1 ; k<obj.rows.length ;k++){
+							for(var h=k+1 ; h<obj.rows.length ;h++){
+								//比较serverTraceDataX相差是否在|0.0002|范围内
+								if(serverTraceDataX[j] - serverTraceDataX[i]<0.0002||serverTraceDataX[j] - serverTraceDataX[i]>-0.0002
+								&&serverTraceDataX[k] - serverTraceDataX[i]<0.0002||serverTraceDataX[k] - serverTraceDataX[i]>-0.0002
+								&&serverTraceDataX[h] - serverTraceDataX[i]<0.0002||serverTraceDataX[h] - serverTraceDataX[i]>-0.0002){
+									//比较serverTraceDataY相差是否在|0.0002|范围内
+									if(serverTraceDataY[j] - serverTraceDataY[i]<0.0002||serverTraceDataY[j] - serverTraceDataY[i]>-0.0002
+									&&serverTraceDataY[k] - serverTraceDataY[i]<0.0002||serverTraceDataY[k] - serverTraceDataY[i]>-0.0002
+									&&serverTraceDataY[h] - serverTraceDataY[i]<0.0002||serverTraceDataY[h] - serverTraceDataY[i]>-0.0002){
+										var icons = "../images/on_road_point.png"; //这个是你要显示坐标的图片的相对路径
+										var serverTraceMarker = new BMap.Marker(serverTracePointData[h]);
+										var icon = new BMap.Icon(icons, new BMap.Size(30, 30)); //显示图标大小
+										serverTraceMarker.setIcon(icon);//设置标签的图标为自定义图标
+										map.addOverlay(serverTraceMarker);
+										//再比较下一个4个数据									
+										i=i+3;
+									}
+								}
+							}
+						}
+					}
+				}
+			
+			},
+			error:function(result){
+				$.messager.show({
+					title:result.total
+				});
+			}
+		});
+		});
+	}
+</script>
+<script type="text/javascript">
+	//预定服务
+	function orderServer(serverID){
+		alert(serverID);
+		$.ajax({
+			type:'post' ,
+			url:'../OrderFormServlet?method=getAllOrderFormRecord',
+			cache:false ,
+			async: false,
+			dataType:'json',
+			success:function(result){
+				var obj = eval(result);
+				//alert(obj.rows.length);
+				for(var i=0 ; i<obj.rows.length ; i++){
+					var orderNumber = obj.rows[i].orderNumber;
+					var userId = obj.rows[i].userId;
+					var serverId = obj.rows[i].serverId;
+					var serviceContent = obj.rows[i].serviceContent;
+					var serviceTypeId = obj.rows[i].serviceTypeId;
+					var serviceStatus = obj.rows[i].serviceStatus;
+					if(serviceStatus==0){
+						$.ajax({
+							type:'post',
+							url:'../OrderFormServlet?method=updateOrderForm',
+							cache:false ,
+							async: false,
+							data:{"orderNumber":orderNumber,
+							 "serverId":serverID
+							},
+							async: false,
+							dataType:'json',
+							success:function(result){
+								
+							},
+							error:function(result){
+								$.messager.show({
+									title:result.total
+								});
+							}
+						});
+						break;
+					}
+				}				
+			},
+			error:function(result){
+				$.messager.show({
+					title:result.total
+				});
+			}
+		});
+	}
+	//查询指定用户名的用户
+	$('#searchUserButton').click(function(){
+		if($('#searchUser').form('validate')){
+			$.ajax({
+				type: 'post' ,
+				url:'../UserServlet?method=getSelectUserRecord' ,
+				async: false,
+				cache:false ,
+				data:$('#searchUser').serialize(),
+				dataType:'json',
+				success:function(result){
+					var obj = eval(result);
+					for(var i=0 ; i<obj.rows.length ; i++){
+						var userID = obj.rows[i].userID;
+						var userName = obj.rows[i].userName;
+						var userGender = obj.rows[i].userGender;
+						var userAge = obj.rows[i].userAge;
+						var userTel = obj.rows[i].userTel;
+						var userAddress = obj.rows[i].userAddress;
+						var userCoordinateX = obj.rows[i].userCoordinateX;
+						var userCoordinateY = obj.rows[i].userCoordinateY;
+						var userPoint = new BMap.Point(userCoordinateX,userCoordinateY);
+						var map = new BMap.Map("allmap");
+						map.centerAndZoom(userPoint,12);
+						var userMarker = new BMap.Marker(userPoint);
+						map.addOverlay(userMarker);
+						//alert(test);
+						//调用弹出窗口
+						popupUserInfoWindow(userMarker,
+								  userID,
+								  userName,
+								  userGender,
+								  userAge,
+								  userTel,
+								  userAddress,
+								  userCoordinateX,
+								  userCoordinateY);
+						alert("1234567890");
+						window.onload = loadMapPage;
+						alert("3456");
+						
+					}
+				} ,
+				error:function(result){
+					$.meesager.show({
+						title:result.total , 
+						msg:result.message
+					});
+				}
+			});
+		} else {
+			$.messager.show({
+				title:'提示信息!' ,
+				msg:'数据验证不通过,不能保存!'
+			});
+		}
+	});
+					
+	//js方法：序列化表单 			
+	function serializeForm(form){
+		var obj = {};
+		$.each(form.serializeArray(),function(index){
+			if(obj[this['name']]){
+				obj[this['name']] = obj[this['name']] + ','+this['value'];
+			} else {
+				obj[this['name']] =this['value'];
+			}
+		});
+		return obj;
+	}
+</script>
+
+<script type="text/javascript">
+	//定义用户属性数组用于取出用户属性存放显示
+	var serverWorkplaceID = new Array();
+	var serverWorkplaceName = new Array();
+	var serverWorkplaceCoordinateX = new Array();
+	var serverWorkplaceCoordinateY = new Array();
+	var serverWorkplaceAddress = new Array();
+	//打开页面时加载
+	//加载workspace
+	function showWorkspaceCoordinate(){
+		$.ajax({
+			type: 'post' ,
+			url:'../ServerWorkspaceServlet?method=getList',
+			async: false,
+			cache:false ,
+			dataType:'json' ,
+			success:function(result){
+				//var obj = result.parseJSON();
+				//var obj = JSON.parse(result);
+				var obj = eval(result);
+				for(var i=0 ; i<obj.rows.length ; i++){
+					serverWorkplaceID[i] = obj.rows[i].serverWorkplaceID;
+					serverWorkplaceName[i] = obj.rows[i].serverWorkplaceName;
+					serverWorkplaceCoordinateX[i] = obj.rows[i].serverWorkplaceCoordinateX;
+					serverWorkplaceCoordinateY[i] = obj.rows[i].serverWorkplaceCoordinateY;
+					serverWorkplaceAddress[i] = obj.rows[i].serverWorkplaceAddress;					
+				}
+				for(var i=0;i<obj.rows.length;i++){
+					var serverWorkplacePoint = new BMap.Point(serverWorkplaceCoordinateX[i],serverWorkplaceCoordinateY[i]);
+					addServerWorkplaceMarker(serverWorkplacePoint,
+						serverWorkplaceID[i],
+						serverWorkplaceName[i],
+						serverWorkplaceCoordinateX[i],
+						serverWorkplaceCoordinateY[i],
+						serverWorkplaceAddress[i]);
+				}
+				
+				
+			},
+			error:function(result){
+				$.messager.show({
+					title:result.total
+				});
+			}
+		});
+	}
+	//绘制服务人员点
+	function addServerWorkplaceMarker(serverWorkplacePoint,
+		serverWorkplaceID,
+		serverWorkplaceName,
+		serverWorkplaceCoordinateX,
+		serverWorkplaceCoordinateY,
+		serverWorkplaceAddress){
+		var icons = "../images/server_workplace_coordinate.png"; //这个是你要显示坐标的图片的相对路径
+		var serverWorkplaceMarker = new BMap.Marker(serverWorkplacePoint); //lng为经度,lat为纬度
+		var icon = new BMap.Icon(icons, new BMap.Size(60, 60)); //显示图标大小
+		serverWorkplaceMarker.setIcon(icon);//设置标签的图标为自定义图标
+		map.addOverlay(serverWorkplaceMarker);//将标签添加到地图中去
+		//添加弹出服务地址的信息窗口					
+		popupServerWorkplaceInfoWindow(
+			serverWorkplaceMarker,
+			serverWorkplaceID,
+			serverWorkplaceName,
+			serverWorkplaceAddress
+			);
+	}
+	//弹出服务地址的信息窗口方法
+	function popupServerWorkplaceInfoWindow(
+			serverWorkplaceMarker,
+			serverWorkplaceID,
+			serverWorkplaceName,
+			serverWorkplaceAddress
+			){
+		var sContent =
+		"<form id='myform' action='' method='post'>"+
+  				"<table>"+
+  					"<tr>"+
+  						"<td>单位ID:</td>"+
+  						"<td><input id='serverWorkplaceID' type='text' name='no' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>单位名:</td>"+
+  						"<td><input id='serverWorkplaceName' type='text' name='name' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>地址:</td>"+
+  						"<td><input id='serverWorkplaceAddress' type='text' name='credit' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr align='center'>"+
+  						"<td colspan='2'>"+
+  						"</td>"+
+  					"</tr>"+				 					    					    					    					    					    					    					    					
+  				"</table>"+
+  		"</form>";
+		var infoWindow = new BMap.InfoWindow(sContent);
+		serverWorkplaceMarker.addEventListener("click", function(){
+			 
+		    this.openInfoWindow(infoWindow);
+		    //往弹出的窗口里添加用户信息
+		    document.getElementById('serverWorkplaceID').setAttribute('value',serverWorkplaceID);
+		   	document.getElementById('serverWorkplaceName').setAttribute('value',serverWorkplaceName);
+		   	document.getElementById('serverWorkplaceAddress').setAttribute('value',serverWorkplaceAddress);
+	    });
+	}
+</script>
+<!--加载用户点，显示呼叫为跳动  -->
+<script type="text/javascript">
+	//定义用户属性数组用于取出用户属性存放显示
+	var userID = new Array();
+	var userName = new Array();
+	var userGender = new Array();
+	var userAge = new Array();
+	var userTel = new Array();
+	var userCoordinateX = new Array();
+	var userCoordinateY = new Array();
+	var insuredTypeID = new Array();
+	var userAddress = new Array();
+	var userStatus = new Array();
+	//定义呼叫用户的数量
+	var needHelp = 0;
+	//打开页面时加载
+	function showUserCoordinate(){
+		$.ajax({
+			type:'post' ,
+			url:'../UserServlet?method=getAllUserRecord',
+			cache:false ,
+			dataType:'json' ,
+			success:function(result){
+				//var obj = result.parseJSON();
+				//var obj = JSON.parse(result);
+				var obj = eval(result);
+				for(var i=0 ; i<obj.rows.length ; i++){
+					userID[i] = obj.rows[i].userID;
+					userName[i] = obj.rows[i].userName;
+					userGender[i] = obj.rows[i].userGender;
+					userAge[i] = obj.rows[i].userAge;
+					userTel[i] = obj.rows[i].userTel;
+					userCoordinateX[i] = obj.rows[i].userCoordinateX;
+					userCoordinateY[i] = obj.rows[i].userCoordinateY;
+					insuredTypeID[i] = obj.rows[i].insuredTypeID;
+					userAddress[i] = obj.rows[i].userAddress;
+					userStatus[i] = obj.rows[i].userStatus;
+					//统计需要帮助人数
+					if(userStatus[i]==1){
+						needHelp = needHelp + 1;
+					}
+					showNeedHelpNumber();
+					showUserNumber();
+				}
+				//var map = new BMap.Map("allmap");	
+				//var userPoint = new BMap.Point(120.827862,31.966614);
+				//map.centerAndZoom(userPoint,12);
+				for(var i=0;i<obj.rows.length;i++){
+					var userPoint = new BMap.Point(userCoordinateX[i],userCoordinateY[i]);
+					
+					addUserMarker(userPoint,
+						userID[i],
+						userName[i],
+						userGender[i],
+						userAge[i],
+						userTel[i],
+						userCoordinateX[i],
+						userCoordinateY[i],
+						insuredTypeID[i],
+						userAddress[i],
+						userStatus[i]);
+				}
+								
+			},
+			error:function(result){
+				$.messager.show({
+					title:result.total
+				});
+			}
+		});
+	}
+	//绘制用户坐标
+	function addUserMarker(userPoint,
+		userID,
+		userName,
+		userGender,
+		userAge,
+		userTel,
+		userCoordinateX,
+		userCoordinateY,
+		insuredTypeID,
+		userAddress,
+		userStatus){
+		var userMarker = new BMap.Marker(userPoint);
+		map.addOverlay(userMarker);
+		if(userStatus == 1){
+			userMarker.setAnimation(BMAP_ANIMATION_BOUNCE);//跳动的动画
+		}
+		//调用弹出窗口
+		popupUserInfoWindow(userMarker,
+				  userID,
+				  userName,
+				  userGender,
+				  userAge,
+				  userTel,
+				  userAddress,
+				  userCoordinateX,
+				  userCoordinateY);
+	}
+	//弹出用户信息窗口的方法
+	function popupUserInfoWindow(userMarker,
+				  userID,
+				  userName,
+				  userGender,
+				  userAge,
+				  userTel,
+				  userAddress,
+				  userCoordinateX,
+				  userCoordinateY){
+		var sContent =
+		"<form id='myform' action='' method='post'>"+
+  				"<table>"+
+  					"<tr>"+
+  						"<td>用户ID:</td>"+
+  						"<td><input id='userID' type='text' name='no' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>用户名:</td>"+
+  						"<td><input id='userName' type='text' name='name' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>性别:</td>"+
+  						"<td><input id='userGender' type='text' name='credit' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>年龄:</td>"+
+  						"<td><input id='userAge' type='text' name='type' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>电话:</td>"+
+  						"<td><input id='userTel' type='text' name='type' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>住址:</td>"+
+  						"<td><input id='userAddress' type='text' name='type' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr align='center'>"+
+  						"<td colspan='2'>"+
+  							"<input type='button' onClick='selectAround("+userCoordinateX+","+userCoordinateY+")' value='查询周围'/>"+
+  						"</td>"+
+  					"</tr>"+				 					    					    					    					    					    					    					    					
+  				"</table>"+
+  		"</form>";
+		var infoWindow = new BMap.InfoWindow(sContent);
+		userMarker.addEventListener("click", function(){
+			 
+		    this.openInfoWindow(infoWindow);
+		    //往弹出的窗口里添加用户信息
+		    document.getElementById('userID').setAttribute('value',userID);
+		   	document.getElementById('userName').setAttribute('value',userName);
+		   	document.getElementById('userGender').setAttribute('value',userGender);
+		   	document.getElementById('userAge').setAttribute('value',userAge);
+		   	document.getElementById('userTel').setAttribute('value',userTel);
+		   	document.getElementById('userAddress').setAttribute('value',userAddress);
+	    });
+	}
+</script>
+<!--加载服务人员  -->
+<script type="text/javascript">
+	//定义服务人员属性数组用于取出服务人员属性存放显示
+	var serverID = new Array();
+	var serverName = new Array();
+	var serverWorkplaceID = new Array();
+	var serverTel = new Array();
+	var serverCoordinateX = new Array();
+	var serverCoordinateY = new Array();
+	var serverStatus = new Array();
+	//定义空闲的服务人员
+	var leisureServer = 0;
+	//打开页面时加载
+	function showServerCoordinate(){
+		$.ajax({
+			type: 'post' ,
+			url:'../ServerServlet?method=getAllServerRecord',
+			async: false,
+			cache:false ,
+			dataType:'json' ,
+			success:function(result){
+				//var obj = result.parseJSON();
+				//var obj = JSON.parse(result);
+				var obj = eval(result);
+				for(var i=0 ; i<obj.rows.length ; i++){
+					serverID[i] = obj.rows[i].serverID;
+					serverName[i] = obj.rows[i].serverName;
+					serverWorkplaceID[i] = obj.rows[i].serverWorkplaceID;
+					serverTel[i] = obj.rows[i].serverTel;
+					serverCoordinateX[i] = obj.rows[i].serverCoordinateX;
+					serverCoordinateY[i] = obj.rows[i].serverCoordinateY;
+					serverStatus[i] = obj.rows[i].serverStatus;
+					if(serverStatus[i] == 1){
+						leisureServer = leisureServer + 1;
+					}
+					showLeisureServerNumber();
+					showAllServerNumber();
+				}
+				for(var i=0;i<obj.rows.length;i++){
+					var serverPoint = new BMap.Point(serverCoordinateX[i],serverCoordinateY[i]);
+					addServerMarker(serverPoint,
+						serverID[i],
+						serverName[i],
+						serverWorkplaceID[i],
+						serverTel[i],
+						serverCoordinateX[i],
+						serverCoordinateY[i],
+						serverStatus[i]);
+				}				
+			},
+			error:function(result){
+				$.messager.show({
+					title:result.total
+				});
+			}
+		});
+	}
+	//添加服务人员点
+	function addServerMarker(serverPoint,
+		serverID,
+		serverName,
+		serverWorkplaceID,
+		serverTel,
+		serverCoordinateX,
+		serverCoordinateY,
+		serverStatus){
+		var icons = "../images/server_coordinate.png"; //这个是你要显示坐标的图片的相对路径
+		serverPoint = new BMap.Point(serverCoordinateX,serverCoordinateY);
+		var serverMarker = new BMap.Marker(serverPoint); //lng为经度,lat为纬度
+		var icon = new BMap.Icon(icons, new BMap.Size(60, 60)); //显示图标大小
+		serverMarker.setIcon(icon);//设置标签的图标为自定义图标
+		map.addOverlay(serverMarker);
+		popupServerInfoWindow(serverMarker,
+						  	  serverID,
+						      serverName,
+						      serverTel,
+						      serverStatus,
+						      serverWorkplaceID,
+						      serverCoordinateX,
+						      serverCoordinateY);
+		
+	}
+	function popupServerInfoWindow(serverMarker,
+						  serverID,
+						  serverName,
+						  serverTel,
+						  serverStatus,
+						  serverWorkplaceID,
+						  serverCoordinateX,
+						  serverCoordinateY){
+		var sContent =
+		"<form id='myform' action='' method='post'>"+
+  				"<table>"+
+  					"<tr>"+
+  						"<td>服务ID:</td>"+
+  						"<td><input id='serverID' type='text' name='no' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>服务名:</td>"+
+  						"<td><input id='serverName' type='text' name='name' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>单位:</td>"+
+  						"<td><input id='serverWorkplaceID' type='text' name='credit' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>电话:</td>"+
+  						"<td><input id='serverTel' type='text' name='type' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr>"+
+  						"<td>状态:</td>"+
+  						"<td><input id='serverStatus' type='text' name='type' value='' style='border:0px' readonly/></td>"+
+  					"</tr>"+
+  					"<tr align='center'>"+
+  						"<td colspan='2'>"+
+  							"<input type='button' onClick='selectAround("+serverCoordinateX+","+serverCoordinateY+")' value='查询周围'/>"+
+  							"<input type='button' id='order' value='预定'/>"+
+  						"</td>"+
+  					"</tr>"+				 					    					    					    					    					    					    					    					
+  				"</table>"+
+  		"</form>";
+  		//"<input type='button' id='order' onClick='orderServer("+serverID+")' value='预定'/>"+
+  		//alert(serverID);
+		var infoWindow = new BMap.InfoWindow(sContent);
+		serverMarker.addEventListener("click", function(){
+		    this.openInfoWindow(infoWindow);
+		    //	点击服务人员坐标后给预订按钮添加点击事件
+		    $("#order").click(function(){
+		    	orderServer(serverID);
+		    });
+		    //往弹出的窗口里添加服务人员信息
+		    document.getElementById('serverID').setAttribute('value',serverID);
+		   	document.getElementById('serverName').setAttribute('value',serverName);
+		   	document.getElementById('serverWorkplaceID').setAttribute('value',serverWorkplaceID);
+		   	document.getElementById('serverTel').setAttribute('value',serverTel);
+		   	if(serverStatus==1){
+		   		serverStatus='正在服务';
+		   	}else{
+		   		serverStatus='没有服务';
+		   	}
+		   	document.getElementById('serverStatus').setAttribute('value',serverStatus);
+	    });
+	}
+</script>
+<script type="text/javascript">
+	var map = new BMap.Map("allmap");	
+	var point = new BMap.Point(120.895271,32.011143);
+	map.centerAndZoom(point,12);
+	map.enableScrollWheelZoom(true);
+	function staticControl(){
+            this.defaultAnchor = BMAP_ANCHOR_TOP_RIGHT;
+            this.defaultOffset = new BMap.Size(10,10);
+        }
+        //继承Control的API
+        staticControl.prototype = new BMap.Control();
+        //初始化控件
+        staticControl.prototype.initialize=function(map){
+            var parentDiv = document.createElement('parent');
+            parentDiv.innerHTML = "<div style='width:300px'>"+
+            						"<input id='userSelectButton' type='button' style='width:60px;height:30px;margin-right:3px' value='用户查询'/>"+
+            						"<input id='serverSelectButton' type='button' style='width:80px;height:30px;margin-right:3px' value='服务人员查询'/>"+
+            						"<input id='PlaceSelectButton' type='button' style='width:80px;height:30px;margin-right:3px' value='周边公共设施'/>"+
+            						"<input id='orderSelectButton' type='button' style='width:60px;height:30px' value='订单查询'/>"+
+            					  "</div>"+
+            					  "<div id='userSelectDiv' style='position:absolute;width:300px;height:35;display:none;margin-top:10px;background-color:#FF0000'>"+
+            					  "<select style='height:25px;margin-top:5px' id='select_user_method'><option value ='select_userName'>用户名查询</option><option value ='select_userTel'>电话号码查询</option><option value='select_userAddress'>地址查询</option><option value='select_needHelp'>查询呼叫用户</option></select>"+
+            					  "<form style='float:right;margin-top:5px;height:25px;' id='userSearch' method='post'>"+
+            					  "<input type='text' id='select_userInfo' name='select_userInfo' style='margin-left:5px;height:25px;width=50px' value=''/>"+
+            					  "<input type='button' id='select_user' style='margin-left:5px;height:25px;width:35' value='查询'/>"+
+            					  "</form>"+
+            					  "</div>"+
+            					  "<div id='serverSelectDiv' style='position:absolute;width:300px;height:35px;display:none;margin-top:10px;background-color:#00FF00'>"+
+            					  "<select style='height:25px;margin-left:5px;margin-top:5px' id='select_server_method'><option value ='select_serverName'>服务人名查询</option><option value ='select_serverTel'>电话号码查询</option></select>"+
+            					  "<form style='float:right;margin-top:5px;height:25px;' id='serverSearch' method='post'>"+
+            					  "<input type='text' id='select_serverInfo' name='select_serverInfo' style='margin-left:5px;height:25px;width=50px' value=''/>"+
+            					  "<input type='button' id='select_server' style='margin-left:5px;height:25px;width:35' value='查询'/>"+
+            					  "</form>"+
+            					  "</div>"+
+            					  "<div id='placeSelectDiv' style='position:absolute;width:300px;height:35px;display:none;margin-top:10px;background-color:#00F0FF'>"+
+            					  "<select style='height:25px;margin-left:5px;margin-top:5px' id='select_place_method'><option value ='select_placeName'>公共设施查询</option></select>"+
+            					  "<form style='float:right;margin-top:5px;height:25px;' name='placeSearch' id='placeSearch' method='post'>"+
+            					  "<input type='text' name='select_placeInfo' id='select_placeInfo' style='margin-left:5px;height:25px;width=50px' value=''/>"+
+            					  "<input type='button' id='select_place' style='margin-left:5px;height:25px;width:35' value='查询'/>"+
+            					  "</form>"+
+            					  "</div>"+
+            					  "<div id='orderSelectDiv' style='overflow-x:auto;position:absolute;width:300px;display:none;height:200px;margin-top:10px;background-color:#00FFFF'>"+
+            					  "<div style='height:200px;width:900px'>"+
+  								  "<table id='pend_order_form_t'></table>"+
+  								  "</div>"+
+            					  "</div>";
+            //添加DOM元素到地图中
+            map.getContainer().appendChild(parentDiv);
+            //返回DOM
+            return parentDiv;
+        }
+        //创建控件实例
+        var staticsCtrl = new staticControl();
+        //添加到地图当中
+        map.addControl(staticsCtrl);
+</script>
+<script type="text/javascript">
+	//点击订单查询按钮显示查询框，开始查询
+	$('#orderSelectButton').click(function(){
+		$("#userSelectDiv").hide();
+		$("#serverSelectDiv").hide();
+		$("#placeSelectDiv").hide();
+		$("#orderSelectDiv").show();
+		$(function(){	
+		/**
+		 *	初始化数据表格  
+		 */
+		$('#pend_order_form_t').datagrid({
+				idField:'id' ,		//只要创建数据表格 就必须要加 idField
+				fit:true ,
+				url:'../OrderFormServlet?method=getList',
+				fitColumns:true,  
+				striped: true,					//隔行变色特性 
+				loadMsg: '数据正在加载,请耐心的等待...',
+				rownumbers:true ,
+				rowStyler: function(index ,record){
+					 if(record.age > 25){
+						 return "background:red";
+					 }
+				} ,
+				columns:[[
+					{
+						field:'orderNumber' ,
+						title:'orderNumber' ,
+						width:60 ,
+						sortable : true 
+					},
+					{
+						field:'userId' , 
+						title:'userId' ,
+						width:60
+					},
+					{
+						field:'serviceContent' ,
+						title:'serviceContent' ,
+						width:60 ,
+						sortable : true
+					},
+					{
+						field:'serviceTypeId' ,
+						title:'serviceTypeId' ,
+						width:60 ,
+						sortable : true
+					},
+					{
+						field:'serverId' ,
+						title:'serverId' ,
+						width:60 ,
+						sortable : true
+					},
+					{
+						field:'serviceStatus' ,
+						title:'serviceStatus' ,
+						width:60 ,
+						sortable : true
+					}
+				]] ,
+				pagination: true , 
+				pageSize: 10 ,
+				pageList:[5,10,15,20,50] ,
+		});
+	});
+		
+	});
+	//点击周边公共设施查询按钮显示查询框，开始查询
+	$('#PlaceSelectButton').click(function(){
+		$("#userSelectDiv").hide();
+		$("#orderSelectDiv").hide();
+		$("#serverSelectDiv").hide();
+		$("#placeSelectDiv").show();
+		$('#select_place').click(function(){
+			if($('#placeSearch').form('validate')){
+					$.ajax({
+						type: 'post' ,
+						url:'../ServerWorkspaceServlet?method=getSelectServerWaorkplaceNameRecord' ,
+						async: false,
+						cache:false,
+						data:$('#placeSearch').serialize(),
+						dataType:'json',
+						success:function(result){
+							var map = new BMap.Map("allmap");
+							var obj = eval(result);
+							for(var i=0 ; i<obj.rows.length ; i++){
+								serverWorkplaceID = obj.rows[i].serverWorkplaceID;
+								serverWorkplaceName = obj.rows[i].serverWorkplaceName;
+								serverWorkplaceCoordinateX = obj.rows[i].serverWorkplaceCoordinateX;
+								serverWorkplaceCoordinateY = obj.rows[i].serverWorkplaceCoordinateY;
+								serverWorkplaceAddress = obj.rows[i].serverWorkplaceAddress;	
+								
+								var serverWorkplacePoint = new BMap.Point(serverWorkplaceCoordinateX,serverWorkplaceCoordinateY);
+								map.centerAndZoom(serverWorkplacePoint,12);
+								var icons = "../images/server_workplace_coordinate.png"; //这个是你要显示坐标的图片的相对路径
+								var serverWorkplaceMarker = new BMap.Marker(serverWorkplacePoint);
+								var icon = new BMap.Icon(icons, new BMap.Size(60, 60)); //显示图标大小
+								serverWorkplaceMarker.setIcon(icon);//设置标签的图标为自定义图标
+								map.addOverlay(serverWorkplaceMarker);
+								//调用弹出窗口
+								popupServerWorkplaceInfoWindow(
+										serverWorkplaceMarker,
+										serverWorkplaceID,
+										serverWorkplaceName,
+										serverWorkplaceAddress
+										);				
+							}
+						} ,
+						error:function(result){
+							$.meesager.show({
+								title:result.total , 
+								msg:result.message
+							});
+						}
+					});
+				}
+		});
+	});
+	//点击服务人员查询按钮显示查询框，开始查询
+	$('#serverSelectButton').click(function(){
+		$("#userSelectDiv").hide();
+		$("#placeSelectDiv").hide();
+		$("#orderSelectDiv").hide();
+		$("#serverSelectDiv").show();
+		$('#select_server').click(function(){
+			if(jQuery("#select_server_method").val()=='select_serverName'){//选择服务人员姓名查询
+				if($('#serverSearch').form('validate')){
+					$.ajax({
+						type: 'post' ,
+						url:'../ServerServlet?method=getSelectServerNameRecord' ,
+						async: false,
+						cache:false ,
+						data:$('#serverSearch').serialize(),
+						dataType:'json',
+						success:function(result){
+							var map = new BMap.Map("allmap");
+							var obj = eval(result);
+							for(var i=0 ; i<obj.rows.length ; i++){
+								var serverID = obj.rows[i].serverID;
+								var serverName = obj.rows[i].serverName;
+								var serverWorkplaceID = obj.rows[i].serverWorkplaceID;
+								var serverTel = obj.rows[i].serverTel;
+								var serverCoordinateX = obj.rows[i].serverCoordinateX;
+								var serverCoordinateY = obj.rows[i].serverCoordinateY;
+								var serverStatus = obj.rows[i].serverStatus;
+								
+								
+								var serverPoint = new BMap.Point(serverCoordinateX,serverCoordinateY);
+								map.centerAndZoom(serverPoint,12);
+								var icons = "../images/server_coordinate.png"; //这个是你要显示坐标的图片的相对路径
+								var serverMarker = new BMap.Marker(serverPoint);
+								var icon = new BMap.Icon(icons, new BMap.Size(60, 60)); //显示图标大小
+								serverMarker.setIcon(icon);//设置标签的图标为自定义图标
+								map.addOverlay(serverMarker);
+								//调用弹出窗口
+								popupServerInfoWindow(serverMarker,
+										  serverID,
+										  serverName,
+										  serverTel,
+										  serverStatus,
+										  serverWorkplaceID,
+										  serverCoordinateX,
+										  serverCoordinateY);						
+							}
+						} ,
+						error:function(result){
+							$.meesager.show({
+								title:result.total , 
+								msg:result.message
+							});
+						}
+					});
+				}
+			}else if(jQuery("#select_server_method").val()=='select_serverTel'){
+				if($('#serverSearch').form('validate')){
+					$.ajax({
+						type: 'post' ,
+						url:'../ServerServlet?method=getSelectServerTelRecord' ,
+						async: false,
+						cache:false ,
+						data:$('#serverSearch').serialize(),
+						dataType:'json',
+						success:function(result){
+							var map = new BMap.Map("allmap");
+							var obj = eval(result);
+							for(var i=0 ; i<obj.rows.length ; i++){
+								var serverID = obj.rows[i].serverID;
+								var serverName = obj.rows[i].serverName;
+								var serverWorkplaceID = obj.rows[i].serverWorkplaceID;
+								var serverTel = obj.rows[i].serverTel;
+								var serverCoordinateX = obj.rows[i].serverCoordinateX;
+								var serverCoordinateY = obj.rows[i].serverCoordinateY;
+								var serverStatus = obj.rows[i].serverStatus;
+								
+								
+								var serverPoint = new BMap.Point(serverCoordinateX,serverCoordinateY);
+								map.enableScrollWheelZoom(true);
+								map.centerAndZoom(serverPoint,12);
+								var icons = "../images/server_coordinate.png"; //这个是你要显示坐标的图片的相对路径
+								var serverMarker = new BMap.Marker(serverPoint);
+								var icon = new BMap.Icon(icons, new BMap.Size(60, 60)); //显示图标大小
+								serverMarker.setIcon(icon);//设置标签的图标为自定义图标
+								map.addOverlay(serverMarker);
+								//调用弹出窗口
+								popupServerInfoWindow(serverMarker,
+										  serverID,
+										  serverName,
+										  serverTel,
+										  serverStatus,
+										  serverWorkplaceID,
+										  serverCoordinateX,
+										  serverCoordinateY);						
+							}
+						} ,
+						error:function(result){
+							$.meesager.show({
+								title:result.total , 
+								msg:result.message
+							});
+						}
+					});
+				}
+			}
+		});
+		
+	});
+	//点击用户查询按钮显示查询框，开始查询
+	$('#userSelectButton').click(function(){
+		$("#placeSelectDiv").hide();
+		$("#orderSelectDiv").hide();
+		$("#serverSelectDiv").hide();
+		$("#userSelectDiv").show();
+		$('#select_user').click(function(){
+			if(jQuery("#select_user_method").val()=='select_userName'){//选择用户名查询
+				if($('#userSearch').form('validate')){
+					$.ajax({
+						type: 'post' ,
+						url:'../UserServlet?method=getSelectUserNameRecord' ,
+						async: false,
+						cache:false ,
+						data:$('#userSearch').serialize(),
+						dataType:'json',
+						success:function(result){
+							var map = new BMap.Map("allmap");
+							var obj = eval(result);
+							for(var i=0 ; i<obj.rows.length ; i++){
+								var userID = obj.rows[i].userID;
+								var userName = obj.rows[i].userName;
+								var userGender = obj.rows[i].userGender;
+								var userAge = obj.rows[i].userAge;
+								var userTel = obj.rows[i].userTel;
+								var userAddress = obj.rows[i].userAddress;
+								var userCoordinateX = obj.rows[i].userCoordinateX;
+								var userCoordinateY = obj.rows[i].userCoordinateY;
+								var userPoint = new BMap.Point(userCoordinateX,userCoordinateY);
+								map.enableScrollWheelZoom(true);
+								map.centerAndZoom(userPoint,12);
+								var userMarker = new BMap.Marker(userPoint);
+								map.addOverlay(userMarker);
+								//alert(test);
+								//调用弹出窗口
+								popupUserInfoWindow(userMarker,
+										  userID,
+										  userName,
+										  userGender,
+										  userAge,
+										  userTel,
+										  userAddress,
+										  userCoordinateX,
+										  userCoordinateY);
+								
+							}
+						} ,
+						error:function(result){
+							$.meesager.show({
+								title:result.total , 
+								msg:result.message
+							});
+						}
+					});
+				} else {
+					$.messager.show({
+						title:'提示信息!' ,
+						msg:'数据验证不通过,不能保存!'
+					});
+				}
+			}else if(jQuery("#select_user_method").val()=='select_userTel'){//选择用户电话号码查询
+				if($('#userSearch').form('validate')){
+					$.ajax({
+						type: 'post' ,
+						url:'../UserServlet?method=getSelectUserTelRecord',
+						async: false,
+						cache:false ,
+						data:$('#userSearch').serialize(),
+						dataType:'json',
+						success:function(result){
+							var map = new BMap.Map("allmap");
+							var obj = eval(result);
+							for(var i=0 ; i<obj.rows.length ; i++){
+								var userID = obj.rows[i].userID;
+								var userName = obj.rows[i].userName;
+								var userGender = obj.rows[i].userGender;
+								var userAge = obj.rows[i].userAge;
+								var userTel = obj.rows[i].userTel;
+								var userAddress = obj.rows[i].userAddress;
+								var userCoordinateX = obj.rows[i].userCoordinateX;
+								var userCoordinateY = obj.rows[i].userCoordinateY;
+								var userPoint = new BMap.Point(userCoordinateX,userCoordinateY);
+								map.enableScrollWheelZoom(true);
+								map.centerAndZoom(userPoint,12);
+								var userMarker = new BMap.Marker(userPoint);
+								map.addOverlay(userMarker);
+								//alert(test);
+								//调用弹出窗口
+								popupUserInfoWindow(userMarker,
+										  userID,
+										  userName,
+										  userGender,
+										  userAge,
+										  userTel,
+										  userAddress,
+										  userCoordinateX,
+										  userCoordinateY);
+																
+							}
+						} ,
+						error:function(result){
+							$.meesager.show({
+								title:result.total , 
+								msg:result.message
+							});
+						}
+					});
+				}
+			}else if(jQuery("#select_user_method").val()=='select_userTel'){//选择用户电话号码查询
+				if($('#userSearch').form('validate')){
+					$.ajax({
+						type: 'post' ,
+						url:'../UserServlet?method=getSelectUserTelRecord' ,
+						async: false,
+						cache:false ,
+						data:$('#userSearch').serialize(),
+						dataType:'json',
+						success:function(result){
+							var map = new BMap.Map("allmap");
+							var obj = eval(result);
+							for(var i=0 ; i<obj.rows.length ; i++){
+								var userID = obj.rows[i].userID;
+								var userName = obj.rows[i].userName;
+								var userGender = obj.rows[i].userGender;
+								var userAge = obj.rows[i].userAge;
+								var userTel = obj.rows[i].userTel;
+								var userAddress = obj.rows[i].userAddress;
+								var userCoordinateX = obj.rows[i].userCoordinateX;
+								var userCoordinateY = obj.rows[i].userCoordinateY;
+								var userPoint = new BMap.Point(userCoordinateX,userCoordinateY);
+								map.enableScrollWheelZoom(true);
+								map.centerAndZoom(userPoint,12);
+								var userMarker = new BMap.Marker(userPoint);
+								map.addOverlay(userMarker);
+								//调用弹出窗口
+								popupUserInfoWindow(userMarker,
+										  userID,
+										  userName,
+										  userGender,
+										  userAge,
+										  userTel,
+										  userAddress,
+										  userCoordinateX,
+										  userCoordinateY);
+								
+							}
+						} ,
+						error:function(result){
+							$.meesager.show({
+								title:result.total , 
+								msg:result.message
+							});
+						}
+					});
+				}
+			}else if(jQuery("#select_user_method").val()=='select_userAddress'){//选择用户电话号码查询
+				if($('#userSearch').form('validate')){
+					$.ajax({
+						type: 'post' ,
+						url:'../UserServlet?method=getSelectUserAddressRecord' ,
+						async: false,
+						cache:false ,
+						data:$('#userSearch').serialize(),
+						dataType:'json',
+						success:function(result){
+							var map = new BMap.Map("allmap");
+							var obj = eval(result);
+							for(var i=0 ; i<obj.rows.length ; i++){
+								var userID = obj.rows[i].userID;
+								var userName = obj.rows[i].userName;
+								var userGender = obj.rows[i].userGender;
+								var userAge = obj.rows[i].userAge;
+								var userTel = obj.rows[i].userTel;
+								var userAddress = obj.rows[i].userAddress;
+								var userCoordinateX = obj.rows[i].userCoordinateX;
+								var userCoordinateY = obj.rows[i].userCoordinateY;
+								var userPoint = new BMap.Point(userCoordinateX,userCoordinateY);
+								map.enableScrollWheelZoom(true);
+								map.centerAndZoom(userPoint,12);
+								var userMarker = new BMap.Marker(userPoint);
+								map.addOverlay(userMarker);
+								//alert(test);
+								//调用弹出窗口
+								popupUserInfoWindow(userMarker,
+										  userID,
+										  userName,
+										  userGender,
+										  userAge,
+										  userTel,
+										  userAddress,
+										  userCoordinateX,
+										  userCoordinateY);								
+							}
+						} ,
+						error:function(result){
+							$.meesager.show({
+								title:result.total , 
+								msg:result.message
+							});
+						}
+					});
+				}
+			}
+		});
+	});
+</script>
